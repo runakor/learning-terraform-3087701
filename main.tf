@@ -63,40 +63,58 @@ module "blog_sg" {
 
 }
 
+module "alb" {
+  source = "terraform-aws-modules/alb/aws"
 
-resource "aws_security_group" "blog" {
-  name = "blog"
-  description = "Allow http and https in. Allow everything out"
+  name    = "blog-alb"
+  vpc_id  = module.blog_vpc.vpc_id
+  subnets = module.blog_vpc.public_subnets
+  security_groups = module.blog_vpc.security_group_id
 
-  vpc_id = data.aws_vpc.default.id
+  listeners = {
+    ex-http-https-redirect = {
+      port     = 80
+      protocol = "HTTP"
+      redirect = {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
+    ex-https = {
+      port            = 443
+      protocol        = "HTTPS"
+      certificate_arn = "arn:aws:iam::123456789012:server-certificate/test_cert-123456789012"
 
-}
+      forward = {
+        target_group_key = "ex-instance"
+      }
+    }
+  }
 
-resource "aws_security_group_rule" "blog_http_in" {
-  type = "ingress"
-  from_port = 80
-  to_port = 80
-  protocol = "tcp"
-  cidr_blocks  = ["0.0.0.0/0"]
+  target_groups = {
+    name_prefix = "blog-"
+    backend_protocol = "HTTP"
+    backedn_port = 80
+    target_type = instance
 
-  security_group_id = aws_security_group.blog.id
-}
+    targets = {
+      my_target =  {
+        target_id = aws_instance.blog.id
+        port = 80
+      }
+    }
 
-resource "aws_security_group_rule" "blog_https_in" {
-  type = "ingress"
-  from_port = 443
-  to_port = 443
-  protocol = "tcp"
-  cidr_blocks  = ["0.0.0.0/0"]
+    ex-instance = {
+      name_prefix      = "h1"
+      protocol         = "HTTP"
+      port             = 80
+      target_type      = "instance"
+    }
+  }
 
-  security_group_id = aws_security_group.blog.id
-}
-resource "aws_security_group_rule" "blog_everything_out" {
-  type = "egress"
-  from_port = 0
-  to_port = 0
-  protocol = "-1"
-  cidr_blocks  = ["0.0.0.0/0"]
-
-  security_group_id = aws_security_group.blog.id
+  tags = {
+    Environment = "Development"
+    Project     = "Example"
+  }
 }
