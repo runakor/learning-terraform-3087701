@@ -94,10 +94,16 @@ module "alb" {
 
   target_groups = {
     ex-instance = {
-      name_prefix      = "h1"
+      name_prefix      = "blog-"
       protocol         = "HTTP"
       port             = 80
       target_type      = "instance"
+      targets = {
+        my_target = {
+          target_id = aws_instance.blog.vpc_id
+          port = 80
+        }
+      }
     }
   }
 
