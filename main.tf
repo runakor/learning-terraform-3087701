@@ -96,7 +96,7 @@ module "alb" {
     name_prefix = "blog-"
     backend_protocol = "HTTP"
     backedn_port = 80
-    target_type = instance
+    target_type = "instance"
 
     targets = {
       my_target =  {
